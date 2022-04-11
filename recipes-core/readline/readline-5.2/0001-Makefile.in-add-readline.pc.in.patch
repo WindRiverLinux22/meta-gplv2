@@ -1,0 +1,135 @@
+From 20141946db72908e23c11d946937e945fb7e527d Mon Sep 17 00:00:00 2001
+From: Chet Ramey <chet.ramey@case.edu>
+Date: Mon, 11 Apr 2022 18:06:03 +0800
+Subject: [PATCH] Makefile.in: add readline.pc.in
+
+Add config file for pkgconfig.
+
+Upstream-Status: Backport [https://git.savannah.gnu.org/cgit/readline.git/commit/?id=d49a9082c0e15bba8cd3d8cc0a994409cf823cac]
+
+Signed-off-by: Mingli Yu <mingli.yu@windriver.com>
+---
+ MANIFEST     |  1 +
+ Makefile.in  | 26 ++++++++++++++++++++------
+ configure.in | 11 ++++++++++-
+ 3 files changed, 31 insertions(+), 7 deletions(-)
+
+diff --git a/MANIFEST b/MANIFEST
+index b288fb6..f5b583b 100644
+--- a/MANIFEST
++++ b/MANIFEST
+@@ -19,6 +19,7 @@ config.h.in	f
+ configure	f
+ configure.in	f
+ Makefile.in	f
++readline.pc.in	f
+ ansi_stdlib.h	f
+ chardefs.h	f
+ history.h	f
+diff --git a/Makefile.in b/Makefile.in
+index 87df428..e4233f7 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -57,6 +57,7 @@ mandir = @mandir@
+ includedir = @includedir@
+ datadir = @datadir@
+ localedir = $(datadir)/locale
++pkgconfigdir = ${libdir}/pkgconfig
+ 
+ infodir = @infodir@
+ 
+@@ -133,7 +134,7 @@ DOCUMENTATION = $(DOCSOURCE) $(DOCOBJECT) $(DOCSUPPORT)
+ 
+ CREATED_MAKEFILES = Makefile doc/Makefile examples/Makefile shlib/Makefile
+ CREATED_CONFIGURE = config.status config.h config.cache config.log \
+-		    stamp-config stamp-h
++		    stamp-config stamp-h readline.pc
+ CREATED_TAGS = TAGS tags
+ 
+ INSTALLED_HEADERS = readline.h chardefs.h keymaps.h history.h tilde.h \
+@@ -217,9 +218,18 @@ uninstall-headers:
+ 
+ maybe-uninstall-headers: uninstall-headers
+ 
++install-pc: installdirs
++	-$(INSTALL_DATA) $(BUILD_DIR)/readline.pc $(DESTDIR)$(pkgconfigdir)/readline.pc
++
++uninstall-pc:
++	-test -n "$(pkgconfigdir)" && cd $(DESTDIR)$(pkgconfigdir) && \
++		${RM} readline.pc
++
++maybe-uninstall-pc: uninstall-pc
++
+ install:	$(INSTALL_TARGETS)
+ 
+-install-static: installdirs $(STATIC_LIBS) install-headers install-doc
++install-static: installdirs $(STATIC_LIBS) install-headers install-doc install-pc
+ 	-$(MV) $(DESTDIR)$(libdir)/libreadline.a $(DESTDIR)$(libdir)/libreadline.old
+ 	$(INSTALL_DATA) libreadline.a $(DESTDIR)$(libdir)/libreadline.a
+ 	-test -n "$(RANLIB)" && $(RANLIB) $(DESTDIR)$(libdir)/libreadline.a
+@@ -230,17 +240,18 @@ install-static: installdirs $(STATIC_LIBS) install-headers install-doc
+ installdirs: $(srcdir)/support/mkinstalldirs
+ 	-$(SHELL) $(srcdir)/support/mkinstalldirs $(DESTDIR)$(includedir) \
+ 		$(DESTDIR)$(includedir)/readline $(DESTDIR)$(libdir) \
+-		$(DESTDIR)$(infodir) $(DESTDIR)$(man3dir)
++		$(DESTDIR)$(infodir) $(DESTDIR)$(man3dir) \
++		$(DESTDIR)$(pkgconfigdir)
+ 
+-uninstall: uninstall-headers uninstall-doc
++uninstall: uninstall-headers uninstall-doc uninstall-pc
+ 	-test -n "$(DESTDIR)$(libdir)" && cd $(DESTDIR)$(libdir) && \
+ 		${RM} libreadline.a libreadline.old libhistory.a libhistory.old $(SHARED_LIBS)
+ 	-( cd shlib; ${MAKE} ${MFLAGS} DESTDIR=${DESTDIR} uninstall )
+ 
+-install-shared: installdirs install-headers shared install-doc
++install-shared: installdirs install-headers shared install-doc install-pc
+ 	-( cd shlib ; ${MAKE} ${MFLAGS} DESTDIR=${DESTDIR} install )
+ 	
+-uninstall-shared: maybe-uninstall-headers
++uninstall-shared: maybe-uninstall-headers maybe-uninstall-pc
+ 	-( cd shlib; ${MAKE} ${MFLAGS} DESTDIR=${DESTDIR} uninstall )
+ 
+ install-doc:	installdirs
+@@ -281,6 +292,9 @@ distclean maintainer-clean: clean
+ 	$(RM) $(CREATED_CONFIGURE)
+ 	$(RM) $(CREATED_TAGS)
+ 
++readline.pc:	config.status $(srcdir)/readline.pc.in
++	$(SHELL) config.status
++
+ info dvi:
+ 	-( cd doc && $(MAKE) $(MFLAGS) $@ )
+ 
+diff --git a/configure.in b/configure.in
+index 9d1f3fb..1186fc3 100644
+--- a/configure.in
++++ b/configure.in
+@@ -191,6 +191,14 @@ if test "$TERMCAP_LIB" = "./lib/termcap/libtermcap.a"; then
+ 	fi
+ fi
+ 
++case "$TERMCAP_LIB" in
++-ltinfo)  TERMCAP_PKG_CONFIG_LIB=tinfo ;;
++-lcurses) TERMCAP_PKG_CONFIG_LIB=ncurses ;;
++-lncurses) TERMCAP_PKG_CONFIG_LIB=ncurses ;;
++-ltermcap) TERMCAP_PKG_CONFIG_LIB=termcap ;;
++*) TERMCAP_PKG_CONFIG_LIB=termcap ;;
++esac
++
+ BASH_CHECK_MULTIBYTE
+ 
+ case "$host_cpu" in
+@@ -288,8 +296,9 @@ AC_SUBST(host_os)
+ AC_SUBST(LIBVERSION)
+ 
+ AC_SUBST(TERMCAP_LIB)
++AC_SUBST(TERMCAP_PKG_CONFIG_LIB)
+ 
+-AC_OUTPUT([Makefile doc/Makefile examples/Makefile shlib/Makefile],
++AC_OUTPUT([Makefile doc/Makefile examples/Makefile shlib/Makefile readline.pc],
+ [
+ # Makefile uses this timestamp file to record whether config.h is up to date.
+ echo > stamp-h
+-- 
+2.25.1
+

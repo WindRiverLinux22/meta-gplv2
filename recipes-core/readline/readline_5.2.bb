@@ -29,7 +29,9 @@ SRC_URI = "${GNU_MIRROR}/readline/${BPN}-${PV}.tar.gz;name=archive \
            ${GNU_MIRROR}/readline/readline-5.2-patches/readline52-014;name=patch14;apply=yes;striplevel=0 \
            file://configure-fix.patch \
            file://config-dirent-symbols.patch \
-           file://fix-redundant-rpath.patch"
+           file://fix-redundant-rpath.patch \
+           file://0001-Makefile.in-add-readline.pc.in.patch \
+           file://readline.pc.in"
 
 SRC_URI[archive.md5sum] = "e39331f32ad14009b9ff49cc10c5e751"
 SRC_URI[archive.sha256sum] = "12e88d96aee2cd1192500356f0535540db499282ca7f76339fb4228c31249f45"
@@ -66,6 +68,7 @@ SRC_URI[patch14.sha256sum] = "6f1a68320d01522ca1ea5a737124ecc8739f3dcbfea2dee21e
 inherit autotools
 
 EXTRA_AUTORECONF += "--exclude=autoheader"
+EXTRA_OECONF += "bash_cv_termcap_lib=ncurses"
 
 LEAD_SONAME = "libreadline.so"
 
@@ -73,6 +76,7 @@ do_configure:prepend () {
 	if [ ! -e ${S}/acinclude.m4 ]; then
 		cat ${S}/aclocal.m4 > ${S}/acinclude.m4
 	fi
+	cp -r ${WORKDIR}/readline.pc.in ${S}
 }
 
 do_install:append () {
